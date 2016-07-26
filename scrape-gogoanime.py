@@ -3,7 +3,7 @@ import logging
 import sys
 
 import requests
-import urllib
+
 
 from lxml import html
 

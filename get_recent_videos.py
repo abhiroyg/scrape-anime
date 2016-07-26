@@ -1,5 +1,6 @@
-import lxml
 import requests
+
+from lxml import html
 
 r = requests.get('http://www.gogoanime.com')
 if r.status_code != 200:
