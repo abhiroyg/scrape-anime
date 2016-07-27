@@ -3,7 +3,11 @@ This file is to be used by a `gogoanime` frequenter
 and who can efficiently give the interested anime names.
 TODO:
     1. Introduce click.
-    2. Put database instead of files, when the files become large.
+    2. Since we put all the episode titles and urls in a single
+file. We should rotate them after they reach a certain size.
+or just delete them after a manual confirmation that we got
+what we wanted.
+    3. Or put database instead of files, when the files become large.
 """
 import datetime
 import json

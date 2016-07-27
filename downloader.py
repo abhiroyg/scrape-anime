@@ -3,11 +3,11 @@ This function is to be used by a `gogoanime` frequenter
 and who can deduce that the anime/movie to be downloaded
 has multiple parts.
 """
+import argparse
 import json
 import logging
 import sys
 
-import click
 import requests
 
 from clint.textui import progress
@@ -20,13 +20,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from urllib.parse import unquote
 
 
-@click.command()
-@click.argument('gogoanime_episode_url')
-@click.argument('has_multiple_parts', default=False)
-@click.argument('download_which', default='all')
-@click.option('-o', '--output_folder', default='.')
-@click.option('-v', '--verbose', count=True)
-def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts, download_which, output_folder, verbose):
+def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts=False,
+        download_which='all', output_folder='.', verbose=0):
     # TODO: Give leeway to download selected parts
     # if the video has multiple parts. (`download_which`)
     # Examples:
@@ -119,7 +114,7 @@ def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts, downl
         logging.info("Downloading {}".format(filename))
         with open(filename, 'wb') as fd:
             total_length = int(r.headers['content-length'])
-            for chunk in progress.mill(r.iter_content(chunk_size),
+            for chunk in progress.bar(r.iter_content(chunk_size),
                     expected_size=(total_length/chunk_size + 1)):
                 if chunk:
                     fd.write(chunk)
@@ -131,4 +126,47 @@ def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts, downl
 
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    open_and_parse_episode_page()
+    #@click.argument('gogoanime_episode_url')
+    #@click.argument('has_multiple_parts', default=False)
+    #@click.argument('download_which', default='all')
+    #@click.option('-o', '--output_folder', default='.')
+    #@click.option('-v', '--verbose', count=True)
+    parser = argparse.ArgumentParser(
+            description='Download anime episode/movie from gogoanime.',
+            formatter_class=argparse.RawTextHelpFormatter)
+
+    parser.add_argument('url',
+            help='The gogoanime URL which contains the video(s).')
+
+    parser.add_argument('-m', '--has_multiple_parts',
+            action='store_true',
+            help="""Is the video split in multiple parts ?
+(All parts being available in the same URL.)
+
+You only have to give "-m" (without quotes), if
+the video has multiple parts. Don't give it, if
+the video does not.""")
+
+    parser.add_argument('-w', '--download_which',
+            default='all',
+            help="""Which parts of the video you want to download.
+Examples:
+    1,3-10,15
+    11-20,1-9
+    1-100,5-7
+    100-87,77-54
+1 being the first part and so on.
+By default, we download all parts.""")
+
+    parser.add_argument('-o', '--output_folder',
+            default='.',
+            help="""Where do you want to download the video ?
+By default, we download to the current folder.""")
+
+    parser.add_argument('-v', '--verbose',
+            action='count',
+            default=0)
+
+    args = parser.parse_args()
+    open_and_parse_episode_page(args.url, args.has_multiple_parts,
+        args.download_which, args.output_folder, args.verbose)
