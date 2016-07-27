@@ -24,8 +24,9 @@ from urllib.parse import unquote
 @click.argument('gogoanime_episode_url')
 @click.argument('has_multiple_parts', default=False)
 @click.argument('download_which', default='all')
+@click.option('-o', '--output_folder', default='.')
 @click.option('-v', '--verbose', count=True)
-def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts, download_which, verbose):
+def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts, download_which, output_folder, verbose):
     # TODO: Give leeway to download selected parts
     # if the video has multiple parts. (`download_which`)
     # Examples:
@@ -54,10 +55,13 @@ def open_and_parse_episode_page(gogoanime_episode_url, has_multiple_parts, downl
     # Used for naming the files as `part1`, `part2`, ...
     part = 1
 
+    if output_folder[-1] != '/':
+        output_folder += '/'
+
     # Extract each url and download
     for embedded_link in embedded_video_links:
         # Create the filename
-        filename = gogoanime_episode_url.split("/")[-1]
+        filename = output_folder + gogoanime_episode_url.split("/")[-1]
 
         if has_multiple_parts:
             filename += '_part_' + str(part)
