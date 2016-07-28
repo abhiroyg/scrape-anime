@@ -5,13 +5,11 @@ has multiple parts.
 """
 import argparse
 import json
-import logging
 import sys
-
-import requests
 
 from clint.textui import progress
 from lxml import html
+import requests
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -19,11 +17,15 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 from urllib.parse import unquote
 
+from log_manager import LogManager
+
+
+logger = LogManager.getLogger('downloader')
 
 def open_and_parse_episode_page(
         gogoanime_episode_url, has_multiple_parts=False,
         download_which='all', output_folder='.',
-        verbose=0, series=False):
+        series=False):
 
     # TODO: Give leeway to download selected parts
     # if the video has multiple parts. (`download_which`)
@@ -38,11 +40,6 @@ def open_and_parse_episode_page(
     #       - Download 1-3 parts of 1st episode, 4-10 parts of 5th episode and
     #         3-7 parts of remaining episodes.
 
-    if verbose >= 1:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
     # Initialize the driver
     driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
     driver.maximize_window()
@@ -52,13 +49,13 @@ def open_and_parse_episode_page(
         # Open the episode/ova/movie page
         r = requests.get(gogoanime_episode_url)
         assert gogoanime_episode_url == r.url
-        logging.debug("Opened episode page: {}".format(r.url))
+        logger.debug("Opened episode page: {}".format(r.url))
 
         # Prints out all the video links in the page.
         h = html.fromstring(r.text)
         embedded_video_links = h.xpath("//*[@class='postcontent']//iframe/@src")
         if len(embedded_video_links) == 0:
-            logging.info("No video links exist in this page.")
+            logger.info("No video links exist in this page.")
             return
 
         # Used for naming the files as `part1`, `part2`, ...
@@ -83,12 +80,12 @@ def open_and_parse_episode_page(
             else:
                 filename += '.mp4'
 
-            logging.info("Extracted filename: {}".format(filename))
+            logger.info("Extracted filename: {}".format(filename))
 
 
             # Get the downloadble link
             driver.get(embedded_link)
-            logging.debug("Opened embedded page: {}".format(embedded_link))
+            logger.debug("Opened embedded page: {}".format(embedded_link))
             WebDriverWait(driver, 60).until(
                 expected_conditions.presence_of_element_located((
                     By.XPATH, "//*[@name='flashvars']")))
@@ -103,7 +100,7 @@ def open_and_parse_episode_page(
             # bitrates = get(flashvarsjson, "bitrates")
 
             bitrates = flashvarsjson["playlist"][1]["bitrates"]
-            logging.debug("Extracted bitrates: {}".format(bitrates))
+            logger.debug("Extracted bitrates: {}".format(bitrates))
 
             if not isinstance(bitrates, list):
                 bitrates = [bitrates]
@@ -118,14 +115,14 @@ def open_and_parse_episode_page(
             # the final downloadable page.
             r = requests.get(redirect_url, stream=True)
             while r.status_code == 302:
-                logging.debug("Redirecting from {}...".format(r.url))
+                logger.debug("Redirecting from {}...".format(r.url))
                 r = requests.get(r.headers['location'], stream=True)
-            logging.debug("Reached the final video page: {}".format(r.url))
+            logger.debug("Reached the final video page: {}".format(r.url))
 
             
             # Download the video
             # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
-            logging.info("Downloading {}".format(filename))
+            logger.info("Downloading {}".format(filename))
             with open(filename, 'wb') as fd:
                 total_length = int(r.headers['content-length'])
                 for chunk in progress.bar(r.iter_content(chunk_size),
@@ -141,7 +138,7 @@ def open_and_parse_episode_page(
         else:
             # We might miss some special episodes if we do it this way.
             # Always check for special episodes and download them individually.
-            logging.warn("We might miss some special episodes. " + \
+            logger.warn("We might miss some special episodes. " + \
                 "Check for them and download them individually.")
             remurl, epnum = gogoanime_episode_url.rsplit('-', 1)
             gogoanime_episode_url = '-'.join([remurl, str(int(epnum) + 1)])
@@ -188,13 +185,9 @@ that came after this too ?
 You only have to give "-s" (without quotes), if
 you want us to. Don't give it otherwise.""")
 
-    parser.add_argument('-v', '--verbose',
-            action='count',
-            default=0)
-
     args = parser.parse_args()
     open_and_parse_episode_page(
         args.url, args.has_multiple_parts,
         args.download_which, args.output_folder,
-        args.verbose, args.series
+        args.series
     )

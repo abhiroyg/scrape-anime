@@ -3,3 +3,4 @@ urllib3==1.14
 lxml==3.3.3
 selenium==2.53.1
 clint==0.5.1
+pyyaml==3.11

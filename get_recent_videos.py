@@ -11,26 +11,27 @@ what we wanted.
 """
 import datetime
 import json
-import logging
 import re
 import sys
 
 from lxml import html
 import requests
 
+from log_manager import LogManager
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+logger = LogManager.getLogger('latest')
 
 r = requests.get('http://www.gogoanime.com')
 if r.status_code != 200:
     raise Exception(
         "Could not load gogoanime.com website. Please try after some time."
     )
-logging.info("Got the home page: {}".format(r.url))
+logger.info("Got the home page: {}".format(r.url))
 
 h = html.fromstring(r.text)
 recent_li = h.xpath("//*[@class='redgr']//li")
-logging.info("Extracted 'Latest episode releases'")
+logger.info("Extracted 'Latest episode releases'")
 
 # The file is a json list
 # of lowercase, space separated
@@ -91,7 +92,7 @@ for li in recent_li:
     episode_title = li.text_content().strip()
     if (episode_title in prev_episode_titles or
             episode_title in ignored_episode_titles):
-        logging.debug("Already downloaded/ignored: {}".format(episode_title))
+        logger.debug("Already downloaded/ignored: {}".format(episode_title))
         flag = True
         continue
 
@@ -99,7 +100,7 @@ for li in recent_li:
 
     subdubraw = li.xpath("./font")[0].text_content().strip('()')
     if subdubraw.lower() != 'sub':
-        logging.warn("Ignoring {}, as it's not subbed.".format(episode_title))
+        logger.warn("Ignoring {}, as it's not subbed.".format(episode_title))
         ignored.append([episode_title, episode_url, cur_itr,
             datetime.datetime.utcnow().isoformat()]) 
         continue
@@ -119,5 +120,5 @@ with open(ignored_filename, 'w') as f:
     json.dump(ignored, f)
 
 if not flag:
-    logging.warn("We most likely missed notifications of recent anime." + \
+    logger.warn("We most likely missed notifications of recent anime." + \
         "Kindly, try to run this file as frequently as possible.")
