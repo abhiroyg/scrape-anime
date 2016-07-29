@@ -36,7 +36,7 @@ logger.info("Extracted 'Latest episode releases'")
 # The file is a json list
 # of lowercase, space separated
 # strings of anime names
-# Look at `interested_anime.json`, for example.
+# ["one piece", "re zero", "himouto"]
 if len(sys.argv) >= 2:
     interested_filename = sys.argv[1]
     with open(interested_filename) as f:
@@ -85,7 +85,8 @@ cur_itr = last_itr + 1
 prev_episode_titles = [entry[0] for entry in prev]
 ignored_episode_titles = [entry[0] for entry in ignored]
 
-flag = False
+lastseen = False
+lastrunseen = False
 
 for li in recent_li:
     # `episode_title` also contains the sub/dub/raw info
@@ -93,7 +94,7 @@ for li in recent_li:
     if (episode_title in prev_episode_titles or
             episode_title in ignored_episode_titles):
         logger.debug("Already downloaded/ignored: {}".format(episode_title))
-        flag = True
+        lastseen = True
         continue
 
     episode_url = li.xpath("./a/@href")[0]
@@ -109,6 +110,8 @@ for li in recent_li:
     if any(x in temp for x in interested):
         prev.append([episode_title, episode_url, cur_itr,
             datetime.datetime.utcnow().isoformat(), False])
+        logger.info("Storing {}".format(episode_title))
+        lastrunseen = True
     else:
         ignored.append([episode_title, episode_url, cur_itr,
             datetime.datetime.utcnow().isoformat()]) 
@@ -119,6 +122,9 @@ with open(prev_filename, 'w') as f:
 with open(ignored_filename, 'w') as f:
     json.dump(ignored, f)
 
-if not flag:
+if not lastseen:
     logger.warn("We most likely missed notifications of recent anime." + \
         "Kindly, try to run this file as frequently as possible.")
+
+if not lastrunseen:
+    logger.warn("No new episodes came out.")
