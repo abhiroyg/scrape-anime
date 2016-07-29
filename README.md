@@ -5,9 +5,13 @@ Disclaimer:
 It will print a warning if it misses some - though it won't give you how many it missed. So, if it misses you are on your own. Sorry :(
 
 Current:
-Downloads the first episode in the "recent episodes" list, unless already downloaded.
+
+1. `downloader`: Downloads an episode/ova/ona/special/movie given URL. Downloads all the episodes after it, if given the option.
+2. `get_recent_videos`: Scrapes gogoanime for recent video list and stores them in a list. We can give a list of anime we are interested in.
+3. `scrape-gogoanime`: Downloads the not-yet-downloaded videos in list got from `get_recent_videos`.
 
 TODO:
+
 1. Have an independent tracker which tracks gogoanime.com website every 15 minutes for recent episodes.
 1. Write a log-reader which reads the output of the above tracker (whenever scheduled to) and downloads the anime/movie.
 1. Give option to download only sub/dub/raw/preview
@@ -29,6 +33,16 @@ CURRENT VISION: (04/07/2016)
     1. But, if notify system is there, then the notified program should be run continuously, to get notified.
     1. If no notification, just store the downloadble links in db.
     1. Whenever the notified system runs, it will check db and downloads not already downloaded stuff.
+
+    **Progress**: (29/7/16)
+
+    1. Created standalone `.py` file that scrapes and stores interested downloadable (`sub`) links (regardless of episode/ova/ona/movie/special) in python list.
+    1. Created another standalone `.py` that downloads links that are not already downloaded.
+
+    **TODO**:
+
+    1. Store links in database instead of python list.
+    2. Create script to run both the standalones at regular intervals.
 
 1. We can improve the above system: 
 
@@ -54,6 +68,8 @@ be a pain.
 1. We need to store all the to-be-downloaded links in database with a flag saying if it got downloaded or not.
     We also need a mutex while accessing db.
     We might need db to get only those entries with downloaded-flag false.
+
+    **Progress**: Currently doing this with a python list. (29/7/16)
 
 1. When we get notified of presence of new anime and their downloadable links...we start downloading them
 parallely.....how many in parallel is configurable....but if too many in parallel, we consume so much
