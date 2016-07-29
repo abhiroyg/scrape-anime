@@ -23,6 +23,7 @@ TODO:
 1. Run in windows (integrating with IDM) (above and beyond current capability)
 
 CURRENT VISION: (04/07/2016)
+
 1. Check the website at some configurable interval and notify whenever you encounter new episodes.
 
     1. if the interval is large, we might miss some episodes
