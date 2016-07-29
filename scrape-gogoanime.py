@@ -11,7 +11,7 @@ import requests
 
 from lxml import html
 
-from downloader import open_and_parse_episode_page
+from downloader import downloader
 from log_manager import LogManager
 
 
@@ -27,7 +27,7 @@ for i in range(len(prev)):
     # If it is already downloaded
     if prev[i][4]:
         continue
-    open_and_parse_episode_page(prev[i][1])
+    downloader(prev[i][1])
     prev[i][4] = True
 
 with open(prev_file, 'w') as f:

@@ -22,7 +22,174 @@ from log_manager import LogManager
 
 logger = LogManager.getLogger('downloader')
 
-def open_and_parse_episode_page(
+def get_embedded_video_links(gogoanime_episode_url):
+    """
+    TODO:
+    Common url is:
+        http://www.gogoanime.com/battery-episode-3
+    But, some episodes will have urls like
+        http://www.gogoanime.com/battery-episode-3-episode-3
+    So, this function if it could not find videos
+    in the common url. It will go to previous page
+    if it exists and clicks <Next episode>.
+    Sometimes, <Next episode> leads to a `movie/special/ova/ona`
+    page, so it will skip those and gets the correct url.
+    """
+
+    # Open the episode/ova/ona/special/movie page
+    r = requests.get(gogoanime_episode_url)
+
+    assert gogoanime_episode_url == r.url
+    logger.debug("Opened episode page: {}".format(r.url))
+
+    # Prints out all the video links in the page.
+    h = html.fromstring(r.text)
+    embedded_video_links = h.xpath("//*[@class='postcontent']//iframe/@src")
+    return embedded_video_links
+
+def get_downloadable_links(embedded_link, driver):
+    """
+    Get the downloadable link.
+
+    We had to use Selenium mainly for this task.
+    Using `requests`, the webpage of `embedded_link`
+    is not giving us `flashvars`.
+
+    The returned links are not the final downloadable links
+    but they redirect to it. Generally two redirects.
+    """
+
+    driver.get(embedded_link)
+    logger.debug("Opened embedded page: {}".format(embedded_link))
+    WebDriverWait(driver, 60).until(
+        expected_conditions.presence_of_element_located((
+            By.XPATH, "//*[@name='flashvars']")))
+
+    flashvars = driver.find_element_by_xpath(
+        "//*[@name='flashvars']").get_attribute("value")
+    flashvarsjson = json.loads(flashvars[len("config="):])
+
+    bitrates = flashvarsjson["playlist"][1]["bitrates"]
+    logger.debug("Extracted bitrates: {}".format(bitrates))
+
+    if not isinstance(bitrates, list):
+        bitrates = [bitrates]
+
+    # Download the url with lowest bitrate.
+    # Generally it's the default. TODO. Confirm it.
+    download_urls = []
+    for bitrate in bitrates:
+        if bitrate['isDefault']:
+            redirect_url = unquote(bitrate['url'])
+            download_urls = [redirect_url] + download_urls
+        else:
+            redirect_url = unquote(bitrate['url'])
+            download_urls.append(redirect_url)
+    return download_urls
+
+def redirect_and_download(download_urls, filename):
+    chunk_size = 1024
+    flag = False
+    for redirect_url in download_urls:
+        # Go through redirection till you reach
+        # the final downloadable page.
+        r = requests.get(redirect_url, stream=True)
+        while r.status_code == 302:
+            logger.debug("Redirecting from {}...".format(r.url))
+            r = requests.get(r.headers['location'], stream=True)
+        logger.debug("Reached the final video page: {}".format(r.url))
+
+        total_length = int(r.headers['content-length'])
+
+        # If total_length is less than 500kB
+        # ignore this link.
+        if total_length <= 500:
+            continue
+        
+        # Download the video
+        # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
+        logger.info("Downloading {}".format(filename))
+        with open(filename, 'wb') as fd:
+            for chunk in progress.bar(r.iter_content(chunk_size),
+                    expected_size=(total_length/chunk_size + 1)):
+                if chunk:
+                    fd.write(chunk)
+                    fd.flush()
+        flag = True
+        break
+
+    if not flag:
+        logger.warn("Searched through every downloadable URL " + \
+            "for this embedded video. No content in any URL " + \
+            "/ we are blocked by them.")
+    return flag
+
+def has_extension(filename):
+    ext = filename.rsplit('.', 1)[1]
+    if ext in ('flv', 'mkv', 'mp4'):
+        return True
+    return False
+
+def download_video(embedded_video_links, driver, filename,
+        has_multiple_parts):
+    """
+    Extract each url and download
+    """
+
+    # Used for naming the files as `part1`, `part2`, ...
+    part = 1
+
+    for embedded_link in embedded_video_links:
+        # Complete the filename
+        if has_multiple_parts:
+            filename += '_part_' + str(part)
+            part += 1
+
+        if not has_extension(filename):
+            if '.flv' in embedded_link:
+                filename += '.flv'
+            elif '.mkv' in embedded_link:
+                filename += '.mkv'
+            else:
+                filename += '.mp4'
+
+        logger.info("Extracted filename: {}".format(filename))
+
+        download_urls = get_downloadable_links(embedded_link, driver)
+
+        flag = redirect_and_download(download_urls, filename)
+        if (not flag) and (not has_multiple_parts):
+            logger.warn("All downloadable links of this embedded video " + \
+                "are empty. Trying the next embedded video.")
+            # Other URLs have different json structure in "playlist"
+            # In some it's flashvarsjson["playlist"][1]["bitrates"][k][url]
+            # In some, flashvarsjson["playlist"][2]["bitrates"][k][url]
+            # In some, flashvarsjson["playlist"][1][url]
+            # One thing I noticed is, we should ignore 
+            # flashvarsjson["playlist"][k]["provider"] == "ima"
+            # and take
+            # flashvarsjson["playlist"][k]["provider"] == "pseudostreaming"
+
+            # Actually we are getting 403: Forbidden error.
+
+            # continue
+            break
+        elif (not flag) and has_multiple_parts:
+            # For videos with multiple parts next tryable 
+            # embedded video is in next "tab"
+            # and it is best to download all parts from
+            # same embedded video provider. Because they
+            # will cut videos at different points.
+
+            # get the new embedded_video_links
+            # remove the _part_<number>.<mp4> info from filename
+            # download_video(embedded_video_links, driver, filename)
+            break
+
+        if not has_multiple_parts:
+            break
+
+def downloader(
         gogoanime_episode_url, has_multiple_parts=False,
         download_which='all', output_folder='.',
         series=False):
@@ -43,110 +210,21 @@ def open_and_parse_episode_page(
     # Initialize the driver
     driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
     driver.maximize_window()
-    chunk_size = 1024
+
+    if output_folder[-1] != '/':
+        output_folder += '/'
 
     while True:
-        # Open the episode/ova/movie page
-        r = requests.get(gogoanime_episode_url)
-        assert gogoanime_episode_url == r.url
-        logger.debug("Opened episode page: {}".format(r.url))
+        filename = output_folder + gogoanime_episode_url.split("/")[-1]
 
-        # Prints out all the video links in the page.
-        h = html.fromstring(r.text)
-        embedded_video_links = h.xpath("//*[@class='postcontent']//iframe/@src")
+        embedded_video_links = get_embedded_video_links(gogoanime_episode_url)
         if len(embedded_video_links) == 0:
             logger.info("No video links exist in this page.")
-            return
+            break
 
-        # Used for naming the files as `part1`, `part2`, ...
-        part = 1
+        download_video(embedded_video_links, driver, filename,
+                has_multiple_parts)
 
-        if output_folder[-1] != '/':
-            output_folder += '/'
-
-        # Extract each url and download
-        for embedded_link in embedded_video_links:
-            # Create the filename
-            filename = output_folder + gogoanime_episode_url.split("/")[-1]
-
-            if has_multiple_parts:
-                filename += '_part_' + str(part)
-                part += 1
-
-            if '.flv' in embedded_link:
-                filename += '.flv'
-            elif '.mkv' in embedded_link:
-                filename += '.mkv'
-            else:
-                filename += '.mp4'
-
-            logger.info("Extracted filename: {}".format(filename))
-
-
-            # Get the downloadble link
-            driver.get(embedded_link)
-            logger.debug("Opened embedded page: {}".format(embedded_link))
-            WebDriverWait(driver, 60).until(
-                expected_conditions.presence_of_element_located((
-                    By.XPATH, "//*[@name='flashvars']")))
-
-            flashvars = driver.find_element_by_xpath(
-                "//*[@name='flashvars']").get_attribute("value")
-            flashvarsjson = json.loads(flashvars[len("config="):])
-
-            # We have to search all over the dictionary to
-            # find this, if so it will take a lot of time
-            # for the search to finish.
-            # bitrates = get(flashvarsjson, "bitrates")
-
-            bitrates = flashvarsjson["playlist"][1]["bitrates"]
-            logger.debug("Extracted bitrates: {}".format(bitrates))
-
-            if not isinstance(bitrates, list):
-                bitrates = [bitrates]
-
-            # Download the url with lowest bitrate.
-            # Generally it's the default. TODO. Confirm it.
-            download_urls = []
-            for bitrate in bitrates:
-                if bitrate['isDefault']:
-                    redirect_url = unquote(bitrate['url'])
-                    download_urls = [redirect_url] + download_urls
-                else:
-                    redirect_url = unquote(bitrate['url'])
-                    download_urls.append(redirect_url)
-
-            flag = False
-            for redirect_url in download_urls:
-                # Go through redirection till you reach
-                # the final downloadable page.
-                r = requests.get(redirect_url, stream=True)
-                while r.status_code == 302:
-                    logger.debug("Redirecting from {}...".format(r.url))
-                    r = requests.get(r.headers['location'], stream=True)
-                logger.debug("Reached the final video page: {}".format(r.url))
-
-                total_length = int(r.headers['content-length'])
-                if total_length <= 500:
-                    continue
-                
-                # Download the video
-                # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
-                logger.info("Downloading {}".format(filename))
-                with open(filename, 'wb') as fd:
-                    for chunk in progress.bar(r.iter_content(chunk_size),
-                            expected_size=(total_length/chunk_size + 1)):
-                        if chunk:
-                            fd.write(chunk)
-                            fd.flush()
-                flag = True
-                break
-            if not flag:
-                logger.warn("Searched through every downloadable URL." + \
-                    "No content in any URL / we are blocked by them.")
-
-            if not has_multiple_parts:
-                break
         if not series:
             break
         else:
@@ -156,8 +234,10 @@ def open_and_parse_episode_page(
             # Always check for special episodes and download them individually.
             logger.warn("We might miss some special episodes. " + \
                 "Check for them and download them individually.")
+
             remurl, epnum = gogoanime_episode_url.rsplit('-', 1)
             gogoanime_episode_url = '-'.join([remurl, str(int(epnum) + 1)])
+
     driver.quit()
 
 if __name__ == '__main__':
@@ -202,7 +282,7 @@ You only have to give "-s" (without quotes), if
 you want us to. Don't give it otherwise.""")
 
     args = parser.parse_args()
-    open_and_parse_episode_page(
+    downloader(
         args.url, args.has_multiple_parts,
         args.download_which, args.output_folder,
         args.series
