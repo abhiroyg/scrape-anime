@@ -107,29 +107,43 @@ def open_and_parse_episode_page(
 
             # Download the url with lowest bitrate.
             # Generally it's the default. TODO. Confirm it.
+            download_urls = []
             for bitrate in bitrates:
                 if bitrate['isDefault']:
                     redirect_url = unquote(bitrate['url'])
+                    download_urls = [redirect_url] + download_urls
+                else:
+                    redirect_url = unquote(bitrate['url'])
+                    download_urls.append(redirect_url)
 
-            # Go through redirection till you reach
-            # the final downloadable page.
-            r = requests.get(redirect_url, stream=True)
-            while r.status_code == 302:
-                logger.debug("Redirecting from {}...".format(r.url))
-                r = requests.get(r.headers['location'], stream=True)
-            logger.debug("Reached the final video page: {}".format(r.url))
+            flag = False
+            for redirect_url in download_urls:
+                # Go through redirection till you reach
+                # the final downloadable page.
+                r = requests.get(redirect_url, stream=True)
+                while r.status_code == 302:
+                    logger.debug("Redirecting from {}...".format(r.url))
+                    r = requests.get(r.headers['location'], stream=True)
+                logger.debug("Reached the final video page: {}".format(r.url))
 
-            
-            # Download the video
-            # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
-            logger.info("Downloading {}".format(filename))
-            with open(filename, 'wb') as fd:
                 total_length = int(r.headers['content-length'])
-                for chunk in progress.bar(r.iter_content(chunk_size),
-                        expected_size=(total_length/chunk_size + 1)):
-                    if chunk:
-                        fd.write(chunk)
-                        fd.flush()
+                if total_length <= 500:
+                    continue
+                
+                # Download the video
+                # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
+                logger.info("Downloading {}".format(filename))
+                with open(filename, 'wb') as fd:
+                    for chunk in progress.bar(r.iter_content(chunk_size),
+                            expected_size=(total_length/chunk_size + 1)):
+                        if chunk:
+                            fd.write(chunk)
+                            fd.flush()
+                flag = True
+                break
+            if not flag:
+                logger.warn("Searched through every downloadable URL." + \
+                    "No content in any URL / we are blocked by them.")
 
             if not has_multiple_parts:
                 break
@@ -137,6 +151,8 @@ def open_and_parse_episode_page(
             break
         else:
             # We might miss some special episodes if we do it this way.
+            # by special we mean either "special/ova/ona" or episodes
+            # with different url structure than normal/given.
             # Always check for special episodes and download them individually.
             logger.warn("We might miss some special episodes. " + \
                 "Check for them and download them individually.")
