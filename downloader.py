@@ -59,6 +59,15 @@ def get_downloadable_links(embedded_link, driver):
     but they redirect to it. Generally two redirects.
     """
 
+    # Other URLs have different json structure in "playlist"
+    # In some it's flashvarsjson["playlist"][1]["bitrates"][k]["url"]
+    # In some, flashvarsjson["playlist"][2]["bitrates"][k]["url"]
+    # In some, flashvarsjson["playlist"][1]["url"]
+    # One thing I noticed is, we should ignore 
+    # flashvarsjson["playlist"][k]["provider"] == "ima"
+    # and take
+    # flashvarsjson["playlist"][k]["provider"] == "pseudostreaming"
+
     driver.get(embedded_link)
     logger.debug("Opened embedded page: {}".format(embedded_link))
     WebDriverWait(driver, 60).until(
@@ -69,7 +78,14 @@ def get_downloadable_links(embedded_link, driver):
         "//*[@name='flashvars']").get_attribute("value")
     flashvarsjson = json.loads(flashvars[len("config="):])
 
-    bitrates = flashvarsjson["playlist"][1]["bitrates"]
+    playlist = flashvarsjson["playlist"][-1]
+    assert playlist["provider"] != "ima"
+    assert playlist["provider"] == "pseudostreaming"
+    if "bitrates" in playlist:
+        bitrates = playlist["bitrates"]
+    else:
+        bitrates = playlist
+        bitrates["isDefault"] = True
     logger.debug("Extracted bitrates: {}".format(bitrates))
 
     if not isinstance(bitrates, list):
@@ -104,6 +120,8 @@ def redirect_and_download(download_urls, filename):
         # If total_length is less than 500kB
         # ignore this link.
         if total_length <= 500:
+            # Actually we are getting 403: Forbidden error.
+            # and hence a total_length = 0
             continue
         
         # Download the video
@@ -138,6 +156,7 @@ def download_video(embedded_video_links, driver, filename,
 
     # Used for naming the files as `part1`, `part2`, ...
     part = 1
+    count = 1
 
     for embedded_link in embedded_video_links:
         # Complete the filename
@@ -159,21 +178,14 @@ def download_video(embedded_video_links, driver, filename,
 
         flag = redirect_and_download(download_urls, filename)
         if (not flag) and (not has_multiple_parts):
-            logger.warn("All downloadable links of this embedded video " + \
-                "are empty. Trying the next embedded video.")
-            # Other URLs have different json structure in "playlist"
-            # In some it's flashvarsjson["playlist"][1]["bitrates"][k][url]
-            # In some, flashvarsjson["playlist"][2]["bitrates"][k][url]
-            # In some, flashvarsjson["playlist"][1][url]
-            # One thing I noticed is, we should ignore 
-            # flashvarsjson["playlist"][k]["provider"] == "ima"
-            # and take
-            # flashvarsjson["playlist"][k]["provider"] == "pseudostreaming"
-
-            # Actually we are getting 403: Forbidden error.
-
-            # continue
-            break
+            if count == len(embedded_video_links):
+                logger.warn("All downloadable links of this final video " + \
+                    "empty too. Try downloading using other means.")
+            else:
+                logger.warn("All downloadable links of this embedded video " + \
+                    "are empty. Trying the next embedded video.")
+            count += 1
+            continue
         elif (not flag) and has_multiple_parts:
             # For videos with multiple parts next tryable 
             # embedded video is in next "tab"
