@@ -70,12 +70,19 @@ def get_downloadable_links(embedded_link, driver):
 
     driver.get(embedded_link)
     logger.debug("Opened embedded page: {}".format(embedded_link))
-    WebDriverWait(driver, 60).until(
-        expected_conditions.presence_of_element_located((
-            By.XPATH, "//*[@name='flashvars']")))
+    (
+        WebDriverWait(driver, 60)
+        .until(expected_conditions
+               .presence_of_element_located(
+                   (By.XPATH, "//*[@name='flashvars']")
+              ))
+    )
 
-    flashvars = driver.find_element_by_xpath(
-        "//*[@name='flashvars']").get_attribute("value")
+    flashvars = (
+        driver
+        .find_element_by_xpath("//*[@name='flashvars']")
+        .get_attribute("value")
+    )
     flashvarsjson = json.loads(flashvars[len("config="):])
 
     playlist = flashvarsjson["playlist"][-1]
@@ -128,8 +135,12 @@ def redirect_and_download(download_urls, filename):
         # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
         logger.info("Downloading {}".format(filename))
         with open(filename, 'wb') as fd:
-            for chunk in progress.bar(r.iter_content(chunk_size),
-                    expected_size=(total_length/chunk_size + 1)):
+            content = progress.bar(
+                        r.iter_content(chunk_size),
+                        expected_size=(total_length/chunk_size + 1)
+                      )
+
+            for chunk in content:
                 if chunk:
                     fd.write(chunk)
                     fd.flush()
@@ -137,19 +148,14 @@ def redirect_and_download(download_urls, filename):
         break
 
     if not flag:
-        logger.warn("Searched through every downloadable URL " + \
-            "for this embedded video. No content in any URL " + \
-            "/ we are blocked by them.")
+        logger.warn((
+            "Searched through every downloadable URL "
+            + "for this embedded video. No content in any URL "
+            + "/ we are blocked by them."))
     return flag
 
-def has_extension(filename):
-    ext = filename.rsplit('.', 1)[1]
-    if ext in ('flv', 'mkv', 'mp4'):
-        return True
-    return False
-
-def download_video(embedded_video_links, driver, filename,
-        has_multiple_parts):
+def download_video(embedded_video_links, driver, outputfile,
+                   has_multiple_parts):
     """
     Extract each url and download
     """
@@ -160,17 +166,24 @@ def download_video(embedded_video_links, driver, filename,
 
     for embedded_link in embedded_video_links:
         # Complete the filename
+        filename = outputfile
         if has_multiple_parts:
             filename += '_part_' + str(part)
             part += 1
 
-        if not has_extension(filename):
-            if '.flv' in embedded_link:
-                filename += '.flv'
-            elif '.mkv' in embedded_link:
-                filename += '.mkv'
-            else:
-                filename += '.mp4'
+        if '.flv' in embedded_link:
+            filename += '.flv'
+        elif '.mkv' in embedded_link:
+            filename += '.mkv'
+        elif '.mp4' in embedded_link:
+            filename += '.mp4'
+        else:
+            logger.warn(
+                ('Could not deduce the video format from "%s".'
+                 + ' Marking it as ".mp4"'),
+                embedded_link
+            )
+            filename += '.mp4'
 
         logger.info("Extracted filename: {}".format(filename))
 
@@ -179,11 +192,15 @@ def download_video(embedded_video_links, driver, filename,
         flag = redirect_and_download(download_urls, filename)
         if (not flag) and (not has_multiple_parts):
             if count == len(embedded_video_links):
-                logger.warn("All downloadable links of this final video " + \
-                    "empty too. Try downloading using other means.")
+                logger.warn((
+                    "All downloadable links of this final embedded video "
+                    + "are empty too. Try downloading using other means."
+                ))
             else:
-                logger.warn("All downloadable links of this embedded video " + \
-                    "are empty. Trying the next embedded video.")
+                logger.warn((
+                    "All downloadable links of this embedded video "
+                    + "are empty. Trying the next embedded video."
+                ))
             count += 1
             continue
         elif (not flag) and has_multiple_parts:
@@ -235,7 +252,7 @@ def downloader(
             break
 
         download_video(embedded_video_links, driver, filename,
-                has_multiple_parts)
+                       has_multiple_parts)
 
         if not series:
             break
@@ -244,8 +261,8 @@ def downloader(
             # by special we mean either "special/ova/ona" or episodes
             # with different url structure than normal/given.
             # Always check for special episodes and download them individually.
-            logger.warn("We might miss some special episodes. " + \
-                "Check for them and download them individually.")
+            logger.warn(("We might miss some special episodes. "
+                         + "Check for them and download them individually."))
 
             remurl, epnum = gogoanime_episode_url.rsplit('-', 1)
             gogoanime_episode_url = '-'.join([remurl, str(int(epnum) + 1)])
@@ -254,22 +271,28 @@ def downloader(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-            description='Download anime episode/movie from gogoanime.',
-            formatter_class=argparse.RawTextHelpFormatter)
+                description='Download anime episode/movie from gogoanime.',
+                formatter_class=argparse.RawTextHelpFormatter
+             )
 
-    parser.add_argument('url',
-            help='The gogoanime URL which contains the video(s).')
+    parser.add_argument(
+        'url',
+        help='The gogoanime URL which contains the video(s).'
+    )
 
-    parser.add_argument('-m', '--has_multiple_parts',
+    parser.add_argument(
+            '-m', '--has_multiple_parts',
             action='store_true',
             help="""Is the video split in multiple parts ?
 (All parts being available in the same URL.)
 
 You only have to give "-m" (without quotes), if
 the video has multiple parts. Don't give it, if
-the video does not.""")
+the video does not."""
+    )
 
-    parser.add_argument('-w', '--download_which',
+    parser.add_argument(
+            '-w', '--download_which',
             default='all',
             help="""Which parts of the video you want to download.
 Examples:
@@ -278,20 +301,25 @@ Examples:
     1-100,5-7
     100-87,77-54
 1 being the first part and so on.
-By default, we download all parts.""")
+By default, we download all parts."""
+    )
 
-    parser.add_argument('-o', '--output_folder',
+    parser.add_argument(
+            '-o', '--output_folder',
             default='.',
             help="""Where do you want to download the video ?
-By default, we download to the current folder.""")
+By default, we download to the current folder."""
+    )
 
-    parser.add_argument('-s', '--series',
+    parser.add_argument(
+            '-s', '--series',
             action='store_true',
             help="""Do you want us to download all the videos
 that came after this too ?
 
 You only have to give "-s" (without quotes), if
-you want us to. Don't give it otherwise.""")
+you want us to. Don't give it otherwise."""
+    )
 
     args = parser.parse_args()
     downloader(
