@@ -29,7 +29,7 @@ for i in range(len(prev)):
         continue
     downloader(prev[i][1])
     prev[i][4] = True
+    with open(prev_file, 'w') as f:
+        json.dump(prev, f)
 
-with open(prev_file, 'w') as f:
-    json.dump(prev, f)
 logger.info("Updated the anime list")
