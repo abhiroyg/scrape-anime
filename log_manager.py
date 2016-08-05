@@ -15,7 +15,7 @@ def singleton(cls):
 @singleton
 class LogManager:
     def __init__(self):
-        with open('logging.conf') as f:
+        with open('resources/logging.conf') as f:
             logging.config.dictConfig(yaml.load(f))
 
     @staticmethod

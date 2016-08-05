@@ -49,28 +49,23 @@ def get_latest_anime(interested_filename, prev_filename,
             logger.info("Marking all anime.")
     except (FileNotFoundError, ValueError) as e:
         interested = [' ']
+        logger.warn(str(e))
         logger.info("Marking all anime.")
         
 
     #Each term in prev [<episode_title>, <episode_url>,
     #                   <how_old>, <timestamp>, <is_downloaded>]
-    try:
-        with open(prev_filename) as f:
-            prev = json.load(f)
+    with open(prev_filename) as f:
+        prev = json.load(f)
 
-        assert isinstance(prev, list)
-    except (FileNotFoundError, ValueError) as e:
-        prev = []
+    assert isinstance(prev, list)
 
     #Each term in ignored [<episode_title>, <episode_url>,
     #                      <how_old>, <UTC timestamp>]
-    try:
-        with open(ignored_filename) as f:
-            ignored = json.load(f)
+    with open(ignored_filename) as f:
+        ignored = json.load(f)
 
-        assert isinstance(ignored, list)
-    except (FileNotFoundError, ValueError) as e:
-        ignored = []
+    assert isinstance(ignored, list)
 
     if prev and ignored:
         last_itr = max(prev[-1][2], ignored[-1][2])
@@ -138,7 +133,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
             'interested_anime',
-            default='interested_anime.json',
+            default='resources/interested_anime.json',
             nargs='?',
             help="""Pass the path of json file that contains
 list of interested anime names in lowercase.
@@ -148,12 +143,12 @@ Example: ["one piece", "re zero", "himouto"]""")
 
     parser.add_argument(
             '-o', '--output-file',
-            default='prev.json',
+            default='resources/prev.json',
             help="""The file where the latest anime are stored.""")
 
     parser.add_argument(
             '-g', '--ignore-file',
-            default='ignored.json',
+            default='resources/ignored.json',
             help="""The file where the ignored anime links are stored.""")
 
     args = parser.parse_args()
