@@ -2,6 +2,9 @@
 This function is to be used by a `gogoanime` frequenter
 and who can deduce that the anime/movie to be downloaded
 has multiple parts.
+
+TODO: 1. For non-series anime, get all downloadable links
+and download from the one with minimum size.
 """
 import argparse
 import json
@@ -126,7 +129,7 @@ def redirect_and_download(download_urls, filename):
 
         # If total_length is less than 500kB
         # ignore this link.
-        if total_length <= 500:
+        if total_length <= 500*chunk_size:
             # Actually we are getting 403: Forbidden error.
             # and hence a total_length = 0
             continue

@@ -2,3 +2,4 @@ venv
 *.json
 __pycache__
 output_logs
+*.db

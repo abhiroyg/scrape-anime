@@ -2,12 +2,12 @@
 This file is to be used by a `gogoanime` frequenter
 and who can efficiently give the interested anime names.
 TODO:
-    1. Introduce click.
-    2. Since we put all the episode titles and urls in a single
+    1. Since we put all the episode titles and urls in a single
 file. We should rotate them after they reach a certain size.
 or just delete them after a manual confirmation that we got
 what we wanted.
-    3. Or put database instead of files, when the files become large.
+    2. Or put database instead of files, when the files become large.
+    3. We should put the top of website's at last of our list. Doesn't matter for database, I guess.
 """
 import argparse
 import datetime
@@ -35,7 +35,7 @@ def get_latest_anime(interested_filename, prev_filename,
 
     # Scrape the latest release list
     h = html.fromstring(r.text)
-    recent_li = h.xpath("//*[@class='redgr']//li")
+    recent_li = h.xpath("//*[@class='redgr']//li")[::-1]
     logger.debug("Extracted 'Latest episode releases'")
 
     try:
@@ -54,7 +54,7 @@ def get_latest_anime(interested_filename, prev_filename,
         
 
     #Each term in prev [<episode_title>, <episode_url>,
-    #                   <how_old>, <timestamp>, <is_downloaded>]
+    #                   <how_old>, <UTC timestamp>, <is_downloaded>]
     with open(prev_filename) as f:
         prev = json.load(f)
 
@@ -114,10 +114,10 @@ def get_latest_anime(interested_filename, prev_filename,
                 datetime.datetime.utcnow().isoformat()]) 
 
     with open(prev_filename, 'w') as f:
-        json.dump(prev, f)
+        json.dump(prev, f, indent=2)
 
     with open(ignored_filename, 'w') as f:
-        json.dump(ignored, f)
+        json.dump(ignored, f, indent=2)
 
     if not lastseen:
         logger.warn("We most likely missed notifications of recent anime. " + \
