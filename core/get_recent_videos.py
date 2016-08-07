@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
             'interested_anime',
-            default='resources/interested_anime.json',
+            default='core/resources/interested_anime.json',
             nargs='?',
             help="""Pass the path of json file that contains
 list of interested anime names in lowercase.
@@ -166,12 +166,12 @@ Example: ["one piece", "re zero", "himouto"]""")
 
     parser.add_argument(
             '-o', '--output-file',
-            default='resources/prev.json',
+            default='core/resources/prev.json',
             help="""The file where the latest anime are stored.""")
 
     parser.add_argument(
             '-g', '--ignore-file',
-            default='resources/ignored.json',
+            default='core/resources/ignored.json',
             help="""The file where the ignored anime links are stored.""")
 
     args = parser.parse_args()

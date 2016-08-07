@@ -19,7 +19,7 @@ from log_manager import LogManager
 logger = LogManager.getLogger('scraper')
 
 # Assuming `prev.json` is not in use by another process.
-prev_file = 'resources/prev.json'
+prev_file = 'core/resources/prev.json'
 with open(prev_file, 'r', encoding='utf-8') as f:
     prev = json.load(f)
 logger.info("Loaded the want-to-download anime list")

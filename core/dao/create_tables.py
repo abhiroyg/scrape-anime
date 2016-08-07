@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect('anime.db')
+conn = sqlite3.connect('../resources/anime.db')
 
 c = conn.cursor()
 
