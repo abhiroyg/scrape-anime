@@ -13,6 +13,7 @@ import argparse
 import datetime
 import json
 import re
+import sqlite3
 import sys
 
 from lxml import html
@@ -23,65 +24,19 @@ from log_manager import LogManager
 
 logger = LogManager.getLogger('latest')
 
-def get_latest_anime(interested_filename, prev_filename,
-                     ignored_filename):
-    # Go to home page
-    r = requests.get('http://www.gogoanime.com')
-    if r.status_code != 200:
-        raise Exception(
-            "Could not load gogoanime.com website. Please try after some time."
-        )
-    logger.debug("Got the home page: {}".format(r.url))
+def dump_files(prev, ignored, prev_filename, ignored_filename):
+    with open(prev_filename, 'w') as f:
+        json.dump(prev, f, indent=2)
 
-    # Scrape the latest release list
-    h = html.fromstring(r.text)
-    recent_li = h.xpath("//*[@class='redgr']//li")[::-1]
-    logger.debug("Extracted 'Latest episode releases'")
+    with open(ignored_filename, 'w') as f:
+        json.dump(ignored, f, indent=2)
 
-    try:
-        with open(interested_filename) as f:
-            interested = json.load(f)
-
-        assert isinstance(interested, list)
-
-        if not interested:
-            interested = [' ']
-            logger.info("Marking all anime.")
-    except (FileNotFoundError, ValueError) as e:
-        interested = [' ']
-        logger.warn(str(e))
-        logger.info("Marking all anime.")
-        
-
-    #Each term in prev [<episode_title>, <episode_url>,
-    #                   <how_old>, <UTC timestamp>, <is_downloaded>]
-    with open(prev_filename) as f:
-        prev = json.load(f)
-
-    assert isinstance(prev, list)
-
-    #Each term in ignored [<episode_title>, <episode_url>,
-    #                      <how_old>, <UTC timestamp>]
-    with open(ignored_filename) as f:
-        ignored = json.load(f)
-
-    assert isinstance(ignored, list)
-
-    if prev and ignored:
-        last_itr = max(prev[-1][2], ignored[-1][2])
-    elif prev:
-        last_itr = prev[-1][2]
-    elif ignored:
-        last_itr = ignored[-1][2]
-    else:
-        last_itr = 0
-
-    cur_itr = last_itr + 1
-    prev_episode_titles = [episode[0] for episode in prev]
-    ignored_episode_titles = [episode[0] for episode in ignored]
-
+def mark_anime(interested, prev, ignored, recent_li):
     lastseen = False
     hasnewepisodes = False
+
+    prev_episode_titles = [episode[0] for episode in prev]
+    ignored_episode_titles = [episode[0] for episode in ignored]
 
     for li in recent_li:
         # `episode_title` also contains the sub/dub/raw info
@@ -113,11 +68,79 @@ def get_latest_anime(interested_filename, prev_filename,
             ignored.append([episode_title, episode_url, cur_itr,
                 datetime.datetime.utcnow().isoformat()]) 
 
-    with open(prev_filename, 'w') as f:
-        json.dump(prev, f, indent=2)
+    return lastseen, hasnewepisodes
 
-    with open(ignored_filename, 'w') as f:
-        json.dump(ignored, f, indent=2)
+def get_current_iteration_id(prev, ignored):
+    if prev and ignored:
+        last_itr = max(prev[-1][2], ignored[-1][2])
+    elif prev:
+        last_itr = prev[-1][2]
+    elif ignored:
+        last_itr = ignored[-1][2]
+    else:
+        last_itr = 0
+
+    return last_itr + 1
+
+def load_files(interested_filename, prev_filename, ignored_filename):
+    try:
+        with open(interested_filename) as f:
+            interested = json.load(f)
+
+        assert isinstance(interested, list)
+
+        if not interested:
+            interested = [' ']
+            logger.info("Marking all anime.")
+    except (FileNotFoundError, ValueError) as e:
+        interested = [' ']
+        logger.warn(str(e))
+        logger.info("Marking all anime.")
+        
+
+    #Each term in prev [<episode_title>, <episode_url>,
+    #                   <how_old>, <UTC timestamp>, <is_downloaded>]
+    with open(prev_filename) as f:
+        prev = json.load(f)
+
+    assert isinstance(prev, list)
+
+    #Each term in ignored [<episode_title>, <episode_url>,
+    #                      <how_old>, <UTC timestamp>]
+    with open(ignored_filename) as f:
+        ignored = json.load(f)
+
+    assert isinstance(ignored, list)
+
+    return interested, prev, ignored
+
+def get_latest_anime(interested_filename, prev_filename,
+                     ignored_filename):
+    # Go to home page
+    r = requests.get('http://www.gogoanime.com')
+    if r.status_code != 200:
+        raise Exception(
+            "Could not load gogoanime.com website. Please try after some time."
+        )
+    logger.debug("Got the home page: {}".format(r.url))
+
+    # Scrape the latest release list
+    h = html.fromstring(r.text)
+    recent_li = h.xpath("//*[@class='redgr']//li")[::-1]
+    logger.debug("Extracted 'Latest episode releases'")
+
+    interested, prev, ignored = load_files(interested_filename,
+                                           prev_filename,
+                                           ignored_filename)
+
+    cur_itr = get_current_iteration_id(prev, ignored)
+
+    lastseen, hasnewepisodes = mark_anime(interested,
+                                          prev,
+                                          ignored,
+                                          recent_li)
+
+    dump_files(prev, ignored, prev_filename, ignored_filename)
 
     if not lastseen:
         logger.warn("We most likely missed notifications of recent anime. " + \
