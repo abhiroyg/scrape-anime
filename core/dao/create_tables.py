@@ -1,6 +1,12 @@
+import os
 import sqlite3
 
-conn = sqlite3.connect('../resources/anime.db')
+
+resources = os.path.join(
+    os.path.abspath(os.path.join(__file__, os.pardir, os.pardir)),
+    'resources'
+)
+conn = sqlite3.connect(os.path.join(resources, 'anime.db'))
 
 c = conn.cursor()
 

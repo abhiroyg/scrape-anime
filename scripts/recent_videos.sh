@@ -1,3 +1,4 @@
+source /usr/local/bin/virtualenvwrapper.sh
 workon gogoanime
-python main/get_recent_videos.py
+python core/get_recent_videos.py
 deactivate

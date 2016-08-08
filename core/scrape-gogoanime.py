@@ -5,11 +5,10 @@ same time
 """
 import datetime
 import json
+import os
 import sys
 
 import requests
-
-
 from lxml import html
 
 from downloader import downloader
@@ -19,7 +18,11 @@ from log_manager import LogManager
 logger = LogManager.getLogger('scraper')
 
 # Assuming `prev.json` is not in use by another process.
-prev_file = 'core/resources/prev.json'
+resources = os.path.join(
+    os.path.abspath(os.path.join(__file__, os.path.pardir)),
+    'resources'
+)
+prev_file = os.path.join(resources, 'prev.json')
 with open(prev_file, 'r', encoding='utf-8') as f:
     prev = json.load(f)
 logger.info("Loaded the want-to-download anime list")

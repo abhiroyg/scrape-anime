@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import os
 import yaml
 
 ## With help from http://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
@@ -15,7 +16,11 @@ def singleton(cls):
 @singleton
 class LogManager:
     def __init__(self):
-        with open('core/resources/logging.conf') as f:
+        resources = os.path.join(
+            os.path.abspath(os.path.join(__file__, os.path.pardir)),
+            'resources'
+        )
+        with open(os.path.join(resources, 'logging.conf')) as f:
             logging.config.dictConfig(yaml.load(f))
 
     @staticmethod

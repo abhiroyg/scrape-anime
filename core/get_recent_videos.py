@@ -12,6 +12,7 @@ what we wanted.
 import argparse
 import datetime
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -31,7 +32,7 @@ def dump_files(prev, ignored, prev_filename, ignored_filename):
     with open(ignored_filename, 'w') as f:
         json.dump(ignored, f, indent=2)
 
-def mark_anime(interested, prev, ignored, recent_li):
+def mark_anime(interested, prev, ignored, recent_li, cur_itr):
     lastseen = False
     hasnewepisodes = False
 
@@ -138,7 +139,8 @@ def get_latest_anime(interested_filename, prev_filename,
     lastseen, hasnewepisodes = mark_anime(interested,
                                           prev,
                                           ignored,
-                                          recent_li)
+                                          recent_li,
+                                          cur_itr)
 
     dump_files(prev, ignored, prev_filename, ignored_filename)
 
@@ -154,9 +156,12 @@ if __name__ == '__main__':
             description='Get latest anime released.',
             formatter_class=argparse.RawTextHelpFormatter)
 
+    resources = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                             'resources')
+
     parser.add_argument(
             'interested_anime',
-            default='core/resources/interested_anime.json',
+            default=os.path.join(resources, 'interested_anime.json'),
             nargs='?',
             help="""Pass the path of json file that contains
 list of interested anime names in lowercase.
@@ -166,12 +171,12 @@ Example: ["one piece", "re zero", "himouto"]""")
 
     parser.add_argument(
             '-o', '--output-file',
-            default='core/resources/prev.json',
+            default=os.path.join(resources, 'prev.json'),
             help="""The file where the latest anime are stored.""")
 
     parser.add_argument(
             '-g', '--ignore-file',
-            default='core/resources/ignored.json',
+            default=os.path.join(resources, 'ignored.json'),
             help="""The file where the ignored anime links are stored.""")
 
     args = parser.parse_args()
