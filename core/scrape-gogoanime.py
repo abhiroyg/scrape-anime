@@ -13,9 +13,11 @@ from lxml import html
 
 from downloader import downloader
 from log_manager import LogManager
+from db.data_ops import DAO
 
 
 logger = LogManager.getLogger('scraper')
+dao = DAO()
 
 # Assuming `prev.json` is not in use by another process.
 resources = os.path.join(
@@ -25,6 +27,7 @@ resources = os.path.join(
 prev_file = os.path.join(resources, 'prev.json')
 with open(prev_file, 'r', encoding='utf-8') as f:
     prev = json.load(f)
+# prev = dao.get_to_be_downloaded()
 logger.info("Loaded the want-to-download anime list")
 
 for i in range(len(prev)):
@@ -34,9 +37,15 @@ for i in range(len(prev)):
     start_time = datetime.datetime.utcnow().isoformat()
     downloader(prev[i][1])
     end_time = datetime.datetime.utcnow().isoformat()
+    # dao.update_downloaded(end_time, prev[i][0])
     prev[i][4] = True
     prev[i].append(end_time)
     with open(prev_file, 'w') as f:
         json.dump(prev, f)
 
-logger.info("Updated the anime list")
+if len(prev) == 0:
+    logger.info("No anime to download.")
+else:
+    logger.info("Updated the anime list")
+
+# dao.close()

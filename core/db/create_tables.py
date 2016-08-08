@@ -8,9 +8,9 @@ resources = os.path.join(
 )
 conn = sqlite3.connect(os.path.join(resources, 'anime.db'))
 
-c = conn.cursor()
+cur = conn.cursor()
 
-c.execute('''CREATE TABLE episodes
+cur.execute('''CREATE TABLE episodes
              (id integer PRIMARY KEY AUTOINCREMENT,
               episode_title text UNIQUE NOT NULL,
               episode_url text UNIQUE NOT NULL,
@@ -22,7 +22,7 @@ c.execute('''CREATE TABLE episodes
               is_ignored integer NOT NULL DEFAULT 0,
               anime_id integer NOT NULL DEFAULT 0 REFERENCES anime (id) ON DELETE NO ACTION)''')
 
-c.execute('''CREATE TABLE anime
+cur.execute('''CREATE TABLE anime
              (id integer PRIMARY KEY AUTOINCREMENT,
               anime text UNIQUE NOT NULL,
               alternative_names text,

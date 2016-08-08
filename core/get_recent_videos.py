@@ -14,12 +14,14 @@ import datetime
 import json
 import os
 import re
-import sqlite3
 import sys
 
 from lxml import html
 import requests
 
+# from dao.dao import in_database
+# from dao.dao import insert_ignore
+# from dao.dao import insert_download
 from log_manager import LogManager
 
 
@@ -56,6 +58,7 @@ def mark_anime(interested, prev, ignored, recent_li):
         # `episode_title` also contains the sub/dub/raw info
         episode_title = li.text_content().strip()
 
+        # if dao.in_database(episode_title):
         if (episode_title in prev_episode_titles or
                 episode_title in ignored_episode_titles):
             logger.debug("Already marked for download/ignore: {}".format(
@@ -68,17 +71,23 @@ def mark_anime(interested, prev, ignored, recent_li):
         subdubraw = li.xpath("./font")[0].text_content().strip('()')
         if subdubraw.lower() != 'sub':
             logger.warn("Ignoring {}, as it's not subbed.".format(episode_title))
+            # dao.insert_ignore(episode_title, episode_url, cur_itr,
+            #     datetime.datetime.utcnow().isoformat())
             ignored.append([episode_title, episode_url, cur_itr,
                 datetime.datetime.utcnow().isoformat()]) 
             continue
 
         temp = re.sub(r'[^a-zA-Z0-9]+', ' ', episode_title).lower()
         if any(all(y in temp for y in x.split()) for x in interested):
+            # dao.insert_download(episode_title, episode_url, cur_itr,
+            #     datetime.datetime.utcnow().isoformat())
             prev.append([episode_title, episode_url, cur_itr,
                 datetime.datetime.utcnow().isoformat(), False])
             logger.info("Storing {}".format(episode_title))
             hasnewepisodes = True
         else:
+            # dao.insert_ignore(episode_title, episode_url, cur_itr,
+            #     datetime.datetime.utcnow().isoformat())
             ignored.append([episode_title, episode_url, cur_itr,
                 datetime.datetime.utcnow().isoformat()]) 
             logger.warn("Ignoring {} because we are not interested in it"
@@ -150,6 +159,8 @@ def get_latest_anime(interested_filename, prev_filename,
 
     if not hasnewepisodes:
         logger.warn("No new episodes since last run.")
+
+    # dao.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
