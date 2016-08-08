@@ -32,7 +32,20 @@ def dump_files(prev, ignored, prev_filename, ignored_filename):
     with open(ignored_filename, 'w') as f:
         json.dump(ignored, f, indent=2)
 
-def mark_anime(interested, prev, ignored, recent_li, cur_itr):
+def get_current_iteration_id(prev, ignored):
+    if prev and ignored:
+        last_itr = max(prev[-1][2], ignored[-1][2])
+    elif prev:
+        last_itr = prev[-1][2]
+    elif ignored:
+        last_itr = ignored[-1][2]
+    else:
+        last_itr = 0
+
+    return last_itr + 1
+
+def mark_anime(interested, prev, ignored, recent_li):
+    cur_itr = get_current_iteration_id(prev, ignored)
     lastseen = False
     hasnewepisodes = False
 
@@ -45,7 +58,7 @@ def mark_anime(interested, prev, ignored, recent_li, cur_itr):
 
         if (episode_title in prev_episode_titles or
                 episode_title in ignored_episode_titles):
-            logger.info("Already marked for download/ignore: {}".format(
+            logger.debug("Already marked for download/ignore: {}".format(
                          episode_title))
             lastseen = True
             continue
@@ -60,7 +73,7 @@ def mark_anime(interested, prev, ignored, recent_li, cur_itr):
             continue
 
         temp = re.sub(r'[^a-zA-Z0-9]+', ' ', episode_title).lower()
-        if any(x in temp for x in interested):
+        if any(all(y in temp for y in x.split()) for x in interested):
             prev.append([episode_title, episode_url, cur_itr,
                 datetime.datetime.utcnow().isoformat(), False])
             logger.info("Storing {}".format(episode_title))
@@ -68,20 +81,10 @@ def mark_anime(interested, prev, ignored, recent_li, cur_itr):
         else:
             ignored.append([episode_title, episode_url, cur_itr,
                 datetime.datetime.utcnow().isoformat()]) 
+            logger.warn("Ignoring {} because we are not interested in it"
+                        .format(episode_title))
 
     return lastseen, hasnewepisodes
-
-def get_current_iteration_id(prev, ignored):
-    if prev and ignored:
-        last_itr = max(prev[-1][2], ignored[-1][2])
-    elif prev:
-        last_itr = prev[-1][2]
-    elif ignored:
-        last_itr = ignored[-1][2]
-    else:
-        last_itr = 0
-
-    return last_itr + 1
 
 def load_files(interested_filename, prev_filename, ignored_filename):
     try:
@@ -134,13 +137,10 @@ def get_latest_anime(interested_filename, prev_filename,
                                            prev_filename,
                                            ignored_filename)
 
-    cur_itr = get_current_iteration_id(prev, ignored)
-
     lastseen, hasnewepisodes = mark_anime(interested,
                                           prev,
                                           ignored,
-                                          recent_li,
-                                          cur_itr)
+                                          recent_li)
 
     dump_files(prev, ignored, prev_filename, ignored_filename)
 
