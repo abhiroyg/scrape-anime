@@ -12,6 +12,7 @@ import sys
 
 from clint.textui import progress
 from lxml import html
+import notify2
 import requests
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -137,6 +138,13 @@ def redirect_and_download(download_urls, filename):
         # Download the video
         # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
         logger.info("Downloading {}".format(filename))
+
+        # remove './' at front, replace '-' with ' ', remove '.mp4' at last
+        notification_filename = filename.replace('-', ' ')[2:-4]
+        n = notify2.Notification("Downloading",
+                                 notification_filename)
+        n.show()
+
         with open(filename, 'wb') as fd:
             content = progress.bar(
                         r.iter_content(chunk_size),
@@ -147,6 +155,12 @@ def redirect_and_download(download_urls, filename):
                 if chunk:
                     fd.write(chunk)
                     fd.flush()
+
+        n = notify2.Notification("Download completed",
+                                 notification_filename)
+        n.show()
+        n.close()
+
         flag = True
         break
 
@@ -243,6 +257,8 @@ def downloader(
     driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
     driver.maximize_window()
 
+    notify2.init("Download anime")
+
     if output_folder[-1] != '/':
         output_folder += '/'
 
@@ -284,9 +300,9 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-            '-m', '--has_multiple_parts',
-            action='store_true',
-            help="""Is the video split in multiple parts ?
+        '-m', '--has_multiple_parts',
+        action='store_true',
+        help="""Is the video split in multiple parts ?
 (All parts being available in the same URL.)
 
 You only have to give "-m" (without quotes), if
@@ -295,9 +311,9 @@ the video does not."""
     )
 
     parser.add_argument(
-            '-w', '--download_which',
-            default='all',
-            help="""Which parts of the video you want to download.
+        '-w', '--download_which',
+        default='all',
+        help="""Which parts of the video you want to download.
 Examples:
     1,3-10,15
     11-20,1-9
@@ -308,20 +324,30 @@ By default, we download all parts."""
     )
 
     parser.add_argument(
-            '-o', '--output_folder',
-            default='.',
-            help="""Where do you want to download the video ?
+        '-o', '--output_folder',
+        default='.',
+        help="""Where do you want to download the video ?
 By default, we download to the current folder."""
     )
 
     parser.add_argument(
-            '-s', '--series',
-            action='store_true',
-            help="""Do you want us to download all the videos
+        '-s', '--series',
+        action='store_true',
+        help="""Do you want us to download all the videos
 that came after this too ?
 
 You only have to give "-s" (without quotes), if
 you want us to. Don't give it otherwise."""
+    )
+
+    parser.add_argument(
+        '-n', '--no_notification',
+        action='store_true',
+        help="""Do you want us to NOT notify you whenever
+download of your anime started and completed ?
+
+Give "-n" (without quotes), if you want us to.
+Don't give it otherwise."""
     )
 
     args = parser.parse_args()
