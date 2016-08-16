@@ -2,23 +2,48 @@
 This program scrapes/downloads and stores the recent anime/movies uploaded in gogoanime.com website.
 
 Disclaimer:
-It will print a warning if it misses some - though it won't give you how many it missed. So, if it misses you are on your own. Sorry :(
+It will print a warning if it misses some - though it won't give you how many it missed. So, if it misses you are on your own. Sorry :(  
+Right now, it works only in Ubuntu 14.04 and above.
 
 Current:
 
 1. `downloader`: Downloads an episode/ova/ona/special/movie given URL. Downloads all the episodes after it, if given the option.
-2. `get_recent_videos`: Scrapes gogoanime for recent video list and stores them in a list. We can give a list of anime we are interested in.
-3. `scrape-gogoanime`: Downloads the not-yet-downloaded videos in list got from `get_recent_videos`.
+        In Ubuntu, notifies whenever a download starts and whenever it ends.
+1. `get_recent_videos`: Scrapes gogoanime for recent video list and stores them in a list. We can give a list of anime we are interested in.
+1. `scrape-gogoanime`: Downloads the not-yet-downloaded videos in list got from `get_recent_videos`.
 
 TODO:
 
 1. Have an independent tracker which tracks gogoanime.com website every 15 minutes for recent episodes.
+
+    Done. A crontab tracker.
+
 1. Write a log-reader which reads the output of the above tracker (whenever scheduled to) and downloads the anime/movie.
+
+    No scheduling. Run whenever you want to.
+
 1. Give option to download only sub/dub/raw/preview
+
+    Is it for all anime ? or only specific anime ? Like pokemon, download only dub
+    Or one punch man, download only sub and preview. Like this ?
+
+    No, this is to be implemented whenever we can ask user just the name of the
+    anime they want to download.
+
 1. Give option to download only anime/ova/movie/...
+
+    This is to be implemented whenever we can ask user just the name of the
+    anime they want to download.
+
 1. Give option to download only those series user is interested in.
+
+    This is for the anime tracker.
+
 1. Give option to specify gap between two downloads, in case of parallel downloads.
 1. Give option to choose naming convention for downloaded videos.
+
+    Yeah, naming convention for normal episodes, ova, specials. Right now, taking the name from URL.
+
 1. Give option to pause and resume downloads (can't at my current level)
 1. Run in windows (integrating with IDM) (above and beyond current capability)
 
@@ -50,7 +75,7 @@ CURRENT VISION: (04/07/2016)
     1. if we have to search only for a few anime, by noting down the time of release
 and searching only at that time. Negative point will be that, the anime might not get
 release at that time. We have to resort to interval again. Implementing this switch can
-be a pain.
+be a pain (Going back to interval after doing the former will be a pain).
 
     1. And say if we downloaded 5th episode last time but are now downloading 8th episode,
     i.e., if we missed some episodes because of the check-website-interval being large, download
@@ -95,6 +120,7 @@ system resources....if no parallelism i.e., if serial, it takes time to download
     1. Also give provision to multi-select episodes and download them.
     1. If multi-selected from different anime, ask if they want to download entire series for each of 
     them or just the episodes.
+    1. Will the results returned have the sub/dub/raw/preview information ? If not, can we get it by other means ?
 
 1. Give provision to notify whenever there is a new anime. And if interested, to start downloading them whenever
 a new episode is available.
@@ -105,4 +131,9 @@ a new episode is available.
     1. We also have to give provision to say, if ova gets released for the same anime (say, after 2 years),
     we should recognize it and store the downloaded stuff in same folder, may be a different sub-folder.
     1. But, if the folder gets deleted, since we store in db the folder, we can reproduce the folder name.
+
+    1. We can take *genre* information from user to give suggestions only in those genre. Either the blacklist 
+    genre or whitelist genre or both.
+    1. We can integrate this with `anime-planet` or `my-anime-list (MAL)` to get descriptions of anime so that 
+    user can decide if we wants to download the anime.
 

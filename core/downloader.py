@@ -5,6 +5,9 @@ has multiple parts.
 
 TODO: 1. For non-series anime, get all downloadable links
 and download from the one with minimum size.
+      2. In ubuntu desktop notification, put the `episode title`
+that appears in `recent list` or that anime's `episode list` 
+instead of modified filename (episode url).
 """
 import argparse
 import json
@@ -29,6 +32,7 @@ logger = LogManager.getLogger('downloader')
 def get_embedded_video_links(gogoanime_episode_url):
     """
     TODO:
+    When we are downloading a series,
     Common url is:
         http://www.gogoanime.com/battery-episode-3
     But, some episodes will have urls like
@@ -38,13 +42,16 @@ def get_embedded_video_links(gogoanime_episode_url):
     if it exists and clicks <Next episode>.
     Sometimes, <Next episode> leads to a `movie/special/ova/ona`
     page, so it will skip those and gets the correct url.
+
+    Does this need the `series` flag ? Or can the above procedure
+    happen for normal single video downloads too ?
     """
 
     # Open the episode/ova/ona/special/movie page
     r = requests.get(gogoanime_episode_url)
 
     assert gogoanime_episode_url == r.url
-    logger.debug("Opened episode page: {}".format(r.url))
+    logger.debug("Opened episode page.")
 
     # Prints out all the video links in the page.
     h = html.fromstring(r.text)
@@ -254,6 +261,9 @@ def downloader(
     #         3-7 parts of remaining episodes.
 
     # Initialize the driver
+    # TODO: Driver opens a browser window always which is obtrusive
+    # to whatever task the user is doing. Can we run it in the 
+    # background or just use `requests` package ?
     driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
     driver.maximize_window()
 
@@ -263,10 +273,23 @@ def downloader(
         output_folder += '/'
 
     while True:
+        logger.info("Trying to download video from: {}"
+                    .format(gogoanime_episode_url))
+
         filename = output_folder + gogoanime_episode_url.split("/")[-1]
 
         embedded_video_links = get_embedded_video_links(gogoanime_episode_url)
         if len(embedded_video_links) == 0:
+            # If there is network issue and the video-available
+            # page didn't load. This error occurs. But `scraper`
+            # stores in `prev.json` as if the video got downloaded.
+            # Should we return false here and do an `if` there ?
+            # But but, when we are using this as standalone executable
+            # and if we are downloading a series. It will always
+            # return false. Hmm, since we have `series` flag, we can
+            # check it here....if you want to return true in that case.
+            # plus we won't ever use the return value if we are using
+            # it as a standalone executable. So, it's fine I guess.
             logger.info("No video links exist in this page.")
             break
 
