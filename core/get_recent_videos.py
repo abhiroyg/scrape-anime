@@ -151,14 +151,16 @@ def get_latest_anime(interested_filename, prev_filename,
                                           ignored,
                                           recent_li)
 
-    dump_files(prev, ignored, prev_filename, ignored_filename)
-
     if not lastseen:
         logger.warn("We most likely missed notifications of recent anime. " + \
             "Kindly, try to run this file as frequently as possible.")
 
     if not hasnewepisodes:
         logger.warn("No new episodes since last run.")
+        return
+
+    logger.info("Writing the found anime to lists.")
+    dump_files(prev, ignored, prev_filename, ignored_filename)
 
     # dao.close()
 
