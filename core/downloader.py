@@ -121,7 +121,7 @@ def get_downloadable_links(embedded_link, driver):
             download_urls.append(redirect_url)
     return download_urls
 
-def redirect_and_download(download_urls, filename):
+def redirect_and_download(download_urls, filename, no_notification):
     chunk_size = 1024
     flag = False
     for redirect_url in download_urls:
@@ -146,11 +146,12 @@ def redirect_and_download(download_urls, filename):
         # Learnt from http://stackoverflow.com/questions/15644964/python-progress-bar-and-downloads
         logger.info("Downloading {}".format(filename))
 
-        # remove './' at front, replace '-' with ' ', remove '.mp4' at last
-        notification_filename = filename.replace('-', ' ')[2:-4]
-        n = notify2.Notification("Downloading",
-                                 notification_filename)
-        n.show()
+        if not no_notification:
+            # remove './' at front, replace '-' with ' ', remove '.mp4' at last
+            notification_filename = filename.replace('-', ' ')[2:-4]
+            n = notify2.Notification("Downloading",
+                                     notification_filename)
+            n.show()
 
         with open(filename, 'wb') as fd:
             content = progress.bar(
@@ -163,10 +164,11 @@ def redirect_and_download(download_urls, filename):
                     fd.write(chunk)
                     fd.flush()
 
-        n = notify2.Notification("Download completed",
-                                 notification_filename)
-        n.show()
-        n.close()
+        if not no_notification:
+            n = notify2.Notification("Download completed",
+                                     notification_filename)
+            n.show()
+            n.close()
 
         flag = True
         break
@@ -179,7 +181,7 @@ def redirect_and_download(download_urls, filename):
     return flag
 
 def download_video(embedded_video_links, driver, outputfile,
-                   has_multiple_parts):
+                   has_multiple_parts, no_notification):
     """
     Extract each url and download
     """
@@ -213,7 +215,7 @@ def download_video(embedded_video_links, driver, outputfile,
 
         download_urls = get_downloadable_links(embedded_link, driver)
 
-        flag = redirect_and_download(download_urls, filename)
+        flag = redirect_and_download(download_urls, filename, no_notification)
         if (not flag) and (not has_multiple_parts):
             if count == len(embedded_video_links):
                 logger.warn((
@@ -245,7 +247,7 @@ def download_video(embedded_video_links, driver, outputfile,
 def downloader(
         gogoanime_episode_url, has_multiple_parts=False,
         download_which='all', output_folder='.',
-        series=False):
+        series=False, no_notification=False):
 
     # TODO: Give leeway to download selected parts
     # if the video has multiple parts. (`download_which`)
@@ -267,7 +269,8 @@ def downloader(
     driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
     driver.maximize_window()
 
-    notify2.init("Download anime")
+    if not no_notification:
+        notify2.init("Download anime")
 
     if output_folder[-1] != '/':
         output_folder += '/'
@@ -294,7 +297,7 @@ def downloader(
             break
 
         download_video(embedded_video_links, driver, filename,
-                       has_multiple_parts)
+                       has_multiple_parts, no_notification)
 
         if not series:
             break
@@ -369,7 +372,7 @@ you want us to. Don't give it otherwise."""
         help="""Do you want us to NOT notify you whenever
 download of your anime started and completed ?
 
-Give "-n" (without quotes), if you want us to.
+Give "-n" (without quotes), if you want us NOT to.
 Don't give it otherwise."""
     )
 
@@ -377,5 +380,5 @@ Don't give it otherwise."""
     downloader(
         args.url, args.has_multiple_parts,
         args.download_which, args.output_folder,
-        args.series
+        args.series, args.no_notification
     )
