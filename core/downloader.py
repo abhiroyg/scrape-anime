@@ -55,7 +55,25 @@ def get_embedded_video_links(gogoanime_episode_url):
 
     # Prints out all the video links in the page.
     h = html.fromstring(r.text)
+    raw_note = h.xpath("//*[@class='postcontent']/p[1]/img")
+    if len(raw_note) > 0:
+        # This is not a subbed episode
+        logger.info("This is not a subbed video. Not downloading.")
+        return []
+
     embedded_video_links = h.xpath("//*[@class='postcontent']//iframe/@src")
+    if len(embedded_video_links) == 0:
+        # If there is network issue and the video-available
+        # page didn't load. This error occurs. But `scraper`
+        # stores in `prev.json` as if the video got downloaded.
+        # Should we return false here and do an `if` there ?
+        # But but, when we are using this as standalone executable
+        # and if we are downloading a series. It will always
+        # return false. Hmm, since we have `series` flag, we can
+        # check it here....if you want to return true in that case.
+        # plus we won't ever use the return value if we are using
+        # it as a standalone executable. So, it's fine I guess.
+        logger.info("No video links exist in this page.")
     return embedded_video_links
 
 def get_downloadable_links(embedded_link, driver):
@@ -283,18 +301,10 @@ def downloader(
 
         embedded_video_links = get_embedded_video_links(gogoanime_episode_url)
         if len(embedded_video_links) == 0:
-            # If there is network issue and the video-available
-            # page didn't load. This error occurs. But `scraper`
-            # stores in `prev.json` as if the video got downloaded.
-            # Should we return false here and do an `if` there ?
-            # But but, when we are using this as standalone executable
-            # and if we are downloading a series. It will always
-            # return false. Hmm, since we have `series` flag, we can
-            # check it here....if you want to return true in that case.
-            # plus we won't ever use the return value if we are using
-            # it as a standalone executable. So, it's fine I guess.
-            logger.info("No video links exist in this page.")
-            break
+            # This happens if this video is either a raw or 
+            # if there are no videos in this page.
+            # Don't pursue either this or next-in-line videos.
+            series = False
 
         download_video(embedded_video_links, driver, filename,
                        has_multiple_parts, no_notification)
