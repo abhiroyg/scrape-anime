@@ -50,6 +50,9 @@ def get_embedded_video_links(gogoanime_episode_url):
     # Open the episode/ova/ona/special/movie page
     r = requests.get(gogoanime_episode_url)
 
+    if 'gogoanime.com' in gogoanime_episode_url:
+        gogoanime_episode_url = gogoanime_episode_url.replace(
+            'gogoanime.com', 'gogoanime.to')
     assert gogoanime_episode_url == r.url
     logger.debug("Opened episode page.")
 
