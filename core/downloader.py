@@ -3,6 +3,23 @@ This function is to be used by a `gogoanime` frequenter
 and who can deduce that the anime/movie to be downloaded
 has multiple parts.
 
+NOTE: Recently the domain changed from `gogoanime.com` to
+`gogoanime.to`. (around last week of August 2016)
+
+Outline:
+    An episode page has 2 tabs (generally), each tab containing
+    four videos (generally). The four videos are just mirrors of the
+    episode we want to download. So, all in all we have 8 mirrors to
+    download our video from (generally).
+
+    In case of movies (or episodes which are long), the long video
+    is divided into multiple parts of half-an-hour width.
+    (Stating the obvious, the number of parts varies by video length)
+    So, now each tab acts as one mirror of the required video.
+    Generally, we have 4 mirrors (hence 4 tabs).
+
+    Sometimes, some videos can't be loaded and hence can't be downloaded.
+
 TODO: 1. For non-series anime, get all downloadable links
 and download from the one with minimum size.
       2. In ubuntu desktop notification, put the `episode title`
@@ -234,7 +251,19 @@ def download_video(embedded_video_links, driver, outputfile,
 
         logger.info("Extracted filename: {}".format(filename))
 
-        download_urls = get_downloadable_links(embedded_link, driver)
+        try:
+            download_urls = get_downloadable_links(embedded_link, driver)
+        except TimeoutException:
+            # Sometimes, the video does not load, even though other
+            # videos in the same page load.
+            # TimeoutException occurs, when our scraper could not
+            # find any video link to download for that video.
+            logger.warn((
+                "Failed to download from link number: {}/{}."
+                + " Moving forward to the next link."
+            ).format(count, len(embedded_video_links)))
+            count += 1
+            continue
 
         flag = redirect_and_download(download_urls, filename, no_notification)
         if (not flag) and (not has_multiple_parts):
@@ -282,6 +311,9 @@ def downloader(
     #       - Applicable only when `series` is true.
     #       - Download 1-3 parts of 1st episode, 4-10 parts of 5th episode and
     #         3-7 parts of remaining episodes.
+    #   1-5
+    #       - Applicable only when `series` is true.
+    #       - Download 1 to 5 episodes.
 
     # Initialize the driver
     # TODO: Driver opens a browser window always which is obtrusive
@@ -296,7 +328,31 @@ def downloader(
     if output_folder[-1] != '/':
         output_folder += '/'
 
+    # download_range = []
+    # if series and download_which != 'all':
+    #     if ':' not in download_which:
+    #         for rnge in download_which.split(','):
+    #             if '-' in rnge:
+    #                 a, b = rnge.split('-')
+    #                 if a > b:
+    #                     a, b = b, a
+    #                 download_range.extend(
+    #                     [str(x) for x in range(int(float(a)), int(float(b)))]
+    #                 )
+    #                 if '.' in a:
+    #                     download_range.append(a.replace('.', '-'))
+    #                 if '.' in b:
+    #                     download_range.append(b.replace('.', '-'))
+    #             else:
+    #                 download_range.append(rnge.replace('.', '-'))
+
     while True:
+        ep_num = gogoanime_episode_url.rsplit('episode-', 1)[1]
+        # if download_which != 'all' and ep_num not in download_range:
+        #     # how do you get next episode url
+        #     # you will miss `.5` episodes in between.
+        #     continue
+
         logger.info("Trying to download video from: {}"
                     .format(gogoanime_episode_url))
 
