@@ -25,6 +25,8 @@ and download from the one with minimum size.
       2. In ubuntu desktop notification, put the `episode title`
 that appears in `recent list` or that anime's `episode list` 
 instead of modified filename (episode url).
+      3. While downloading a whole series of old anime, try to
+download the `.5` versions that come in the middle too.
 """
 import argparse
 import json
@@ -318,7 +320,7 @@ def downloader(
     # Initialize the driver
     # TODO: Driver opens a browser window always which is obtrusive
     # to whatever task the user is doing. Can we run it in the 
-    # background or just use `requests` package ?
+    # background or just use `requests` package or use 'headless' browser ?
     driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
     driver.maximize_window()
 
@@ -346,12 +348,43 @@ def downloader(
     #             else:
     #                 download_range.append(rnge.replace('.', '-'))
 
+
+
+
+    # Right now, we are solving only the case where
+    # we are given:
+    #   That they wish to download multiple episodes of an anime
+    #   The url from where they want to download.
+    #       For example: if they want to download 5, 6 episodes of
+    #       a series, they have to give: http://<domain>/<anime>-episode-5
+    # we expect them to give:
+    #   only 5 and 6 episodes.
+    #       we expect them to give 5-6 or 5,6
+    #   or in case they want to download 1st, 3rd episodes: 1,3
+
+    # Caution: There should not be spaces.
+    # Create a download range
+    #   For example: if 1-3,7-9,13 is given
+    #       download_range = [1, 2, 3, 7, 8, 9, 13]
+    # While the episode url created is within download range
+    #   download the episodes that are part of download_range
+    #   skip the episodes that are not.
+    #   and as soon as it is outside of download range,
+    #   break out of the while loop.
+    download_range = []  # also means that we have to download all episodes
+    for small_range in download_which.split(','):
+        nums = small_range.split('-')
+        if len(nums) == 1:
+            download_range.append(int(nums[0]))
+        elif len(nums) == 2:
+            download_range.extend(range(int(nums[0]), int(nums[1])))
+
     while True:
-        ep_num = gogoanime_episode_url.rsplit('episode-', 1)[1]
-        # if download_which != 'all' and ep_num not in download_range:
-        #     # how do you get next episode url
-        #     # you will miss `.5` episodes in between.
-        #     continue
+        ep_num = int(gogoanime_episode_url.rsplit('episode-', 1)[1])
+        if download_range and ep_num not in download_range:
+            if ep_num > download_range[-1]:
+                break
+            continue
 
         logger.info("Trying to download video from: {}"
                     .format(gogoanime_episode_url))
@@ -378,6 +411,8 @@ def downloader(
             logger.warn(("We might miss some special episodes. "
                          + "Check for them and download them individually."))
 
+            # how do you get next episode url
+            # you will miss `.5` episodes in between.
             remurl, epnum = gogoanime_episode_url.rsplit('-', 1)
             gogoanime_episode_url = '-'.join([remurl, str(int(epnum) + 1)])
 
