@@ -5,6 +5,10 @@ import yaml
 
 ## With help from http://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
 
+# Make this a file such that 
+# we can also get settings as dictionary
+# like in django.
+
 def singleton(cls):
     instances = {}
     def get_instance():
