@@ -25,6 +25,8 @@ and download from the one with minimum size.
       2. In ubuntu desktop notification, put the `episode title`
 that appears in `recent list` or that anime's `episode list` 
 instead of modified filename (episode url).
+      3. While downloading a whole series of old anime, try to
+download the `.5` versions that come in the middle too.
 """
 import argparse
 import json
@@ -294,11 +296,20 @@ def download_video(embedded_video_links, driver, outputfile,
         if not has_multiple_parts:
             break
 
-def downloader(
-        gogoanime_episode_url, has_multiple_parts=False,
-        download_which='all', output_folder='.',
-        series=False, no_notification=False):
+def next_episode_url(gogoanime_episode_url):
+    # We might miss some special episodes if we do it this way.
+    # by special we mean either "special/ova/ona" or episodes
+    # with different url structure than normal/given.
+    # Always check for special episodes and download them individually.
+    logger.warn(("We might miss some special episodes. "
+                 + "Check for them and download them individually."))
 
+    # how do you get next episode url
+    # you will miss `.5` episodes in between.
+    remurl, epnum = gogoanime_episode_url.rsplit('-', 1)
+    return '-'.join([remurl, str(int(epnum) + 1)])
+
+def get_download_range(download_which):
     # TODO: Give leeway to download selected parts
     # if the video has multiple parts. (`download_which`)
     # Examples:
@@ -314,19 +325,6 @@ def downloader(
     #   1-5
     #       - Applicable only when `series` is true.
     #       - Download 1 to 5 episodes.
-
-    # Initialize the driver
-    # TODO: Driver opens a browser window always which is obtrusive
-    # to whatever task the user is doing. Can we run it in the 
-    # background or just use `requests` package ?
-    driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
-    driver.maximize_window()
-
-    if not no_notification:
-        notify2.init("Download anime")
-
-    if output_folder[-1] != '/':
-        output_folder += '/'
 
     # download_range = []
     # if series and download_which != 'all':
@@ -346,23 +344,74 @@ def downloader(
     #             else:
     #                 download_range.append(rnge.replace('.', '-'))
 
+
+
+
+    # Right now, we are solving only the case where
+    # we are given:
+    #   That they wish to download multiple episodes of an anime
+    #   The url from where they want to download.
+    #       For example: if they want to download 5, 6 episodes of
+    #       a series, they have to give: http://<domain>/<anime>-episode-5
+    # we expect them to give:
+    #   only 5 and 6 episodes.
+    #       we expect them to give 5-6 or 5,6
+    #   or in case they want to download 1st, 3rd episodes: 1,3
+
+    # Caution: There should not be spaces.
+    # Create a download range
+    #   For example: if 1-3,7-9,13 is given
+    #       download_range = [1, 2, 3, 7, 8, 9, 13]
+    # While the episode url created is within download range
+    #   download the episodes that are part of download_range
+    #   skip the episodes that are not.
+    #   and as soon as it is outside of download range,
+    #   break out of the while loop.
+    download_range = []  # also means that we have to download all episodes
+    for small_range in download_which.split(','):
+        nums = small_range.split('-')
+        if len(nums) == 1 and nums[0] != 'all':
+            download_range.append(int(nums[0]))
+        elif len(nums) == 2:
+            download_range.extend(range(int(nums[0]), int(nums[1]) + 1))
+    download_range.sort()
+
+    logger.debug('{}'.format(download_range))
+    return download_range
+
+def downloader(
+        gogoanime_episode_url, driver, has_multiple_parts=False,
+        download_which='all', output_folder='.',
+        series=False, no_notification=False):
+
+    if not no_notification:
+        notify2.init("Download anime")
+
+    if output_folder[-1] != '/':
+        output_folder += '/'
+
+    download_range = get_download_range(download_which)
+
     while True:
-        ep_num = gogoanime_episode_url.rsplit('episode-', 1)[1]
-        # if download_which != 'all' and ep_num not in download_range:
-        #     # how do you get next episode url
-        #     # you will miss `.5` episodes in between.
-        #     continue
+        ep_num = int(gogoanime_episode_url.rsplit('episode-', 1)[1])
+        if download_range and ep_num not in download_range:
+            if ep_num > download_range[-1]:
+                break
+
+            gogoanime_episode_url = next_episode_url(gogoanime_episode_url)
+            continue
 
         logger.info("Trying to download video from: {}"
                     .format(gogoanime_episode_url))
 
-        filename = output_folder + gogoanime_episode_url.split("/")[-1]
+        filename = output_folder + gogoanime_episode_url.rsplit("/", 1)[1]
 
         embedded_video_links = get_embedded_video_links(gogoanime_episode_url)
+
+        # This happens if this video is either a raw or 
+        # if there are no videos in this page.
+        # Don't pursue either this or next-in-line videos.
         if len(embedded_video_links) == 0:
-            # This happens if this video is either a raw or 
-            # if there are no videos in this page.
-            # Don't pursue either this or next-in-line videos.
             series = False
 
         download_video(embedded_video_links, driver, filename,
@@ -371,17 +420,7 @@ def downloader(
         if not series:
             break
         else:
-            # We might miss some special episodes if we do it this way.
-            # by special we mean either "special/ova/ona" or episodes
-            # with different url structure than normal/given.
-            # Always check for special episodes and download them individually.
-            logger.warn(("We might miss some special episodes. "
-                         + "Check for them and download them individually."))
-
-            remurl, epnum = gogoanime_episode_url.rsplit('-', 1)
-            gogoanime_episode_url = '-'.join([remurl, str(int(epnum) + 1)])
-
-    driver.quit()
+            gogoanime_episode_url = next_episode_url(gogoanime_episode_url)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -446,8 +485,19 @@ Don't give it otherwise."""
     )
 
     args = parser.parse_args()
+
+    # Initialize the driver
+    # TODO: Driver opens a browser window always which is obtrusive
+    # to whatever task the user is doing. Can we run it in the 
+    # background or just use `requests` package or use 'headless' browser ?
+    driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
+    driver.maximize_window()
+
     downloader(
-        args.url, args.has_multiple_parts,
+        args.url, driver, args.has_multiple_parts,
         args.download_which, args.output_folder,
         args.series, args.no_notification
     )
+
+    driver.quit()
+

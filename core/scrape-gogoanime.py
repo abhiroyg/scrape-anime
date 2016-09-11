@@ -10,6 +10,7 @@ import sys
 
 import requests
 from lxml import html
+from selenium import webdriver
 
 from downloader import downloader
 from log_manager import LogManager
@@ -30,18 +31,24 @@ with open(prev_file, 'r', encoding='utf-8') as f:
 # prev = dao.get_to_be_downloaded()
 logger.info("Loaded the want-to-download anime list")
 
+driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
+driver.maximize_window()
+
 for i in range(len(prev)):
     # If it is already downloaded
     if prev[i][4]:
         continue
     start_time = datetime.datetime.utcnow().isoformat()
-    downloader(prev[i][1])
+    downloader(prev[i][1], driver)
     end_time = datetime.datetime.utcnow().isoformat()
     # dao.update_downloaded(end_time, prev[i][0])
     prev[i][4] = True
     prev[i].append(end_time)
     with open(prev_file, 'w') as f:
         json.dump(prev, f)
+
+# Don't forget this line of code.
+driver.quit()
 
 if len(prev) == 0:
     logger.info("No anime to download.")
