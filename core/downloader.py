@@ -36,6 +36,7 @@ from clint.textui import progress
 from lxml import html
 import notify2
 import requests
+from requests.exceptions import ConnectionError
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -379,6 +380,12 @@ def get_download_range(download_which):
     logger.debug('{}'.format(download_range))
     return download_range
 
+def get_num_tabs(gogoanime_episode_url):
+    r = requests.get(gogoanime_episode_url)
+    h = html.fromstring(r.text)
+    tabs = h.xpath("//*[@class='tabpadding']//a")
+    return len(tabs) + 1
+
 def downloader(
         gogoanime_episode_url, driver, has_multiple_parts=False,
         download_which='all', output_folder='.',
@@ -393,29 +400,51 @@ def downloader(
     download_range = get_download_range(download_which)
 
     while True:
-        ep_num = int(gogoanime_episode_url.rsplit('episode-', 1)[1])
-        if download_range and ep_num not in download_range:
-            if ep_num > download_range[-1]:
-                break
+        if not has_multiple_parts:
+            ep_num = int(gogoanime_episode_url.rsplit('episode-', 1)[1])
+            if download_range and ep_num not in download_range:
+                if ep_num > download_range[-1]:
+                    break
 
-            gogoanime_episode_url = next_episode_url(gogoanime_episode_url)
-            continue
+                gogoanime_episode_url = next_episode_url(gogoanime_episode_url)
+                continue
 
         logger.info("Trying to download video from: {}"
                     .format(gogoanime_episode_url))
 
         filename = output_folder + gogoanime_episode_url.rsplit("/", 1)[1]
 
-        embedded_video_links = get_embedded_video_links(gogoanime_episode_url)
+        url = gogoanime_episode_url
+        tabcount = 2
 
-        # This happens if this video is either a raw or 
-        # if there are no videos in this page.
-        # Don't pursue either this or next-in-line videos.
-        if len(embedded_video_links) == 0:
+        num_tabs = get_num_tabs(gogoanime_episode_url)
+        logger.debug("Number of tabs: {}".format(num_tabs))
+        if num_tabs == 1:
             series = False
 
-        download_video(embedded_video_links, driver, filename,
-                       has_multiple_parts, no_notification)
+        while tabcount <= num_tabs:
+            try:
+                embedded_video_links = get_embedded_video_links(url)
+
+                # This happens if this video is either a raw or 
+                # if there are no videos in this page.
+                # Don't pursue either this or next-in-line videos.
+                if len(embedded_video_links) == 0:
+                    series = False
+
+                download_video(embedded_video_links, driver, filename,
+                               has_multiple_parts, no_notification)
+                break
+            except ConnectionError:
+                if tabcount == num_tabs:
+                    logger.info(
+                        "We couldn't find downloadable videos"
+                        + " in any of the tabs."
+                        + " Please download this episode manually."
+                    )
+                url = gogoanime_episode_url + '/' + str(tabcount)
+                logger.info("Trying videos of next tab: {}".format(url))
+                tabcount += 1
 
         if not series:
             break
