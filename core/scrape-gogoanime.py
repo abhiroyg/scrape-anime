@@ -18,13 +18,14 @@ from db.data_ops import DAO
 
 
 logger = LogManager.getLogger('scraper')
-dao = DAO()
+# dao = DAO()
 
 # Assuming `prev.json` is not in use by another process.
 resources = os.path.join(
     os.path.abspath(os.path.join(__file__, os.path.pardir)),
     'resources'
 )
+
 prev_file = os.path.join(resources, 'prev.json')
 with open(prev_file, 'r', encoding='utf-8') as f:
     prev = json.load(f)
@@ -35,17 +36,22 @@ driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
 driver.maximize_window()
 
 for i in range(len(prev)):
-    # If it is already downloaded
+    # Skip, if already downloaded
     if prev[i][4]:
         continue
+
     start_time = datetime.datetime.utcnow().isoformat()
-    downloader(prev[i][1], driver)
+    success = downloader(prev[i][1], driver)
     end_time = datetime.datetime.utcnow().isoformat()
-    # dao.update_downloaded(end_time, prev[i][0])
-    prev[i][4] = True
-    prev[i].append(end_time)
-    with open(prev_file, 'w') as f:
-        json.dump(prev, f)
+
+    if success:
+        # dao.update_downloaded(end_time, prev[i][0])
+
+        prev[i][4] = True
+        prev[i].append(end_time)
+
+        with open(prev_file, 'w') as f:
+            json.dump(prev, f)
 
 # Don't forget this line of code.
 driver.quit()
