@@ -12,6 +12,13 @@ Current:
 1. `get_recent_videos`: Scrapes gogoanime for recent video list and stores them in a list. We can give a list of anime we are interested in.
 1. `scrape-gogoanime`: Downloads the not-yet-downloaded videos in list got from `get_recent_videos`.
 
+Installation instructions:
+Python3
+First install dbus-python package of requirements.txt, and then install the remaining packages.
+In ubuntu requires install of `build-essential python3-dev python-dev libxml2-dev libxslt1-dev libdbus-1-dev libdbus-glib-1-dev`
+Create `output_logs` folder in main folder and three files in `core/resources`: `interested_anime.json`,`prev.json`,`ignored.json`.
+Crontab: `*/15 * * * * cd /home/nineleaps/scrape-anime; nohup ./scripts/recent_videos.sh >> output_logs/nohup.out 2>&1 &`
+
 TODO:
 
 1. Have an independent tracker which tracks gogoanime.com website every 15 minutes for recent episodes.
