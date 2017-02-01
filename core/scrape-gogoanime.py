@@ -32,7 +32,8 @@ with open(prev_file, 'r', encoding='utf-8') as f:
 # prev = dao.get_to_be_downloaded()
 logger.info("Loaded the want-to-download anime list")
 
-driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
+home = os.path.expanduser("~")
+driver = webdriver.Chrome(os.path.join(home, 'locallib/chromedriver'))
 driver.maximize_window()
 
 for i in range(len(prev)):

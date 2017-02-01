@@ -543,7 +543,8 @@ Don't give it otherwise."""
     # TODO: Driver opens a browser window always which is obtrusive
     # to whatever task the user is doing. Can we run it in the 
     # background or just use `requests` package or use 'headless' browser ?
-    driver = webdriver.Chrome('/home/abhilash/locallib/chromedriver')
+    home = os.path.expanduser("~")
+    driver = webdriver.Chrome(os.path.join(home, 'locallib/chromedriver'))
     driver.maximize_window()
 
     downloader(

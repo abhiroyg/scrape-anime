@@ -17,10 +17,13 @@ Python3
 First install dbus-python package of requirements.txt, and then install the remaining packages.
 In ubuntu requires install of `build-essential python3-dev python-dev libxml2-dev libxslt1-dev libdbus-1-dev libdbus-glib-1-dev`
 Create `output_logs` folder in main folder and three files in `core/resources`: `interested_anime.json`,`prev.json`,`ignored.json`.
-Crontab: `*/15 * * * * cd /home/nineleaps/scrape-anime; nohup ./scripts/recent_videos.sh >> output_logs/nohup.out 2>&1 &`
+Crontab: `*/15 * * * * cd /home/<home folder>/scrape-anime; nohup ./scripts/recent_videos.sh >> output_logs/nohup.out 2>&1 &`
 
 TODO:
 
+1. Use django-style settings for logging. Provide a command line argument to take the log directory.
+1. Ask the user to have chromedriver in PATH. Give the instructions, if needed.
+1. Create a setup.py file. See if you can put crontab using that file.
 1. Have an independent tracker which tracks gogoanime.com website every 15 minutes for recent episodes.
 
     Done. A crontab tracker.
