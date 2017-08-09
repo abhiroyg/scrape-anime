@@ -126,41 +126,16 @@ def get_downloadable_links(embedded_link, driver):
         WebDriverWait(driver, 60)
         .until(expected_conditions
                .presence_of_element_located(
-                   (By.XPATH, "//*[@name='flashvars']")
+                   (By.XPATH, "//video")
               ))
     )
 
-    flashvars = (
+    download_url = (
         driver
-        .find_element_by_xpath("//*[@name='flashvars']")
-        .get_attribute("value")
+        .find_element_by_xpath("//video")
+        .get_attribute("src")
     )
-    flashvarsjson = json.loads(flashvars[len("config="):])
-
-    playlist = flashvarsjson["playlist"][-1]
-    assert playlist["provider"] != "ima"
-    assert playlist["provider"] == "pseudostreaming"
-    if "bitrates" in playlist:
-        bitrates = playlist["bitrates"]
-    else:
-        bitrates = playlist
-        bitrates["isDefault"] = True
-    logger.debug("Extracted bitrates: {}".format(bitrates))
-
-    if not isinstance(bitrates, list):
-        bitrates = [bitrates]
-
-    # Download the url with lowest bitrate.
-    # Generally it's the default. TODO. Confirm it.
-    download_urls = []
-    for bitrate in bitrates:
-        if bitrate['isDefault']:
-            redirect_url = unquote(bitrate['url'])
-            download_urls = [redirect_url] + download_urls
-        else:
-            redirect_url = unquote(bitrate['url'])
-            download_urls.append(redirect_url)
-    return download_urls
+    return [download_url]
 
 def redirect_and_download(download_urls, filename, no_notification):
     chunk_size = 1024
