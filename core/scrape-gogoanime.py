@@ -52,7 +52,7 @@ for i in range(len(prev)):
         prev[i].append(end_time)
 
         with open(prev_file, 'w') as f:
-            json.dump(prev, f)
+            json.dump(prev, f, indent=2)
 
 # Don't forget this line of code.
 driver.quit()
