@@ -3,7 +3,7 @@ clint==0.5.1
 dbus-python==1.2.4
 lxml==3.3.3
 notify2==0.3
-PyYAML==3.12
+PyYAML==5.4
 requests==2.2.1
 selenium==2.53.1
 urllib3==1.14
