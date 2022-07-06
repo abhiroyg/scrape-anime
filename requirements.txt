@@ -1,7 +1,7 @@
 args==0.1.0
 clint==0.5.1
 dbus-python==1.2.4
-lxml==3.3.3
+lxml==4.9.1
 notify2==0.3
 PyYAML==3.12
 requests==2.2.1
